@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { Hono } from '../../hono'
 import { jsx } from '../../jsx'
+<<<<<<< HEAD
 import { generateHtmlMap, saveHtmlToLocal, ssgParams, toSSG } from './index'
+=======
+import { generateHtmlMap, saveHtmlToLocal, toSSG } from './index'
+>>>>>>> 04b686c (feat: Introducing a New SSG Adaptor/Helper  (#1904))
 import type { FileSystemModule } from './index'
 
 describe('toSSG function', () => {
@@ -46,9 +50,12 @@ describe('toSSG function', () => {
 
   it('Should handle errors correctly', async () => {
     const app = new Hono()
+<<<<<<< HEAD
     app.get('/:aa', ssgParams('paa'), c => {
       return c.text('a')
     })
+=======
+>>>>>>> 04b686c (feat: Introducing a New SSG Adaptor/Helper  (#1904))
     app.get('/', (c) => c.text('Hello, World!'))
     app.get('/about', (c) => c.text('About Page'))
     app.get('/about/some', (c) => c.text('About Page 2tier'))
