@@ -1,6 +1,7 @@
+import type { Context } from '../..'
 import { inspectRoutes } from '../../helper/dev'
 import type { Hono } from '../../hono'
-import type { Env, Schema } from '../../types'
+import type { Env, MiddlewareHandler, Schema } from '../../types'
 import { joinPaths, dirname } from './utils'
 
 /**
@@ -98,6 +99,22 @@ export interface ToSSGInterface<
   ): Promise<ToSSGResult>
 }
 
+export const ssgMode = (
+  mode: ('ssg' | 'ssr') | ((c: Context) => ('ssg' | 'ssr') | Promise<'ssg' | 'ssr'>)
+): MiddlewareHandler => async (c, next) => {
+  const thisRouteMode = typeof mode === 'string' ? mode : await mode(c)
+  if (thisRouteMode === 'ssg') {
+    
+  }
+}
+
+export interface ToSSGOptions {
+  dir?: string
+  /**
+   * Default generate mode.
+   */
+  default?: 'ssg' | 'ssr'
+}
 /**
  * @experimental
  * `ToSSGAdaptorInterface` is an experimental feature.
@@ -108,7 +125,7 @@ export interface ToSSGAdaptorInterface<
   S extends Schema = {},
   BasePath extends string = '/'
 > {
-  (app: Hono<E, S, BasePath>, options?: { dir?: string }): Promise<ToSSGResult>
+  (app: Hono<E, S, BasePath>, options?: ToSSGOptions): Promise<ToSSGResult>
 }
 
 /**
