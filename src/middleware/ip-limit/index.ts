@@ -3,8 +3,8 @@
  * @module
  */
 
-import type { MiddlewareHandler } from '../..'
-import type { AddressType, GetConnInfo } from '../../helper/conninfo'
+import type { Context, MiddlewareHandler } from '../..'
+import type { AddressType, GetConnInfo, NetAddrInfo } from '../../helper/conninfo'
 import { createMiddleware } from '../../helper/factory'
 import { HTTPException } from '../../http-exception'
 import { distinctionRemoteAddr, expandIPv6, ipV4ToBinary, ipV6ToBinary } from '../../utils/ipaddr'
@@ -99,36 +99,75 @@ export interface IPLimitRules {
 }
 
 /**
+ * Handlers for IP Limit Middleware
+ * And Allow/Deny state strings
+ */
+const ALLOW_STRING = 'allow'
+const DENY_STRING = 'deny'
+
+export interface IPLimitHandlers {
+  denyHandler?: (() => HTTPException) | (() => Promise<HTTPException>)
+  validHandler?: (context: {
+    c: Context
+    remote: NetAddrInfo
+    allow: typeof ALLOW_STRING
+    deny: typeof DENY_STRING
+  }) =>
+    | void
+    | typeof ALLOW_STRING
+    | typeof DENY_STRING
+    | Promise<typeof ALLOW_STRING | typeof DENY_STRING | void>
+}
+
+/**
  * IP Limit Middleware
  *
  * @param getConnInfo getConnInfo helper
  */
 export const ipLimit = (
   getConnInfo: GetConnInfo,
-  { deny = [], allow = [] }: IPLimitRules
+  {
+    deny = [],
+    allow = [],
+    denyHandler = () =>
+      new HTTPException(403, {
+        res: new Response('Unauthorized', {
+          status: 403,
+        }),
+      }),
+    validHandler,
+  }: IPLimitRules & IPLimitHandlers
 ): MiddlewareHandler => {
   const denyLength = deny.length
   const allowLength = allow.length
-
-  const blockError = (): HTTPException =>
-    new HTTPException(403, {
-      res: new Response('Unauthorized', {
-        status: 403,
-      }),
-    })
 
   return createMiddleware(async (c, next) => {
     const connInfo = getConnInfo(c)
     const addr = connInfo.remote.address
     if (!addr) {
-      throw blockError()
+      throw await denyHandler()
     }
     const type = connInfo.remote.addressType ?? distinctionRemoteAddr(addr)
+
+    if (validHandler) {
+      const validHandlerResult = await validHandler({
+        c,
+        remote: connInfo.remote,
+        allow: ALLOW_STRING,
+        deny: DENY_STRING,
+      })
+
+      if (validHandlerResult === 'allow') {
+        return await next()
+      } else if (validHandlerResult === 'deny') {
+        throw await denyHandler()
+      }
+    }
 
     for (let i = 0; i < denyLength; i++) {
       const isValid = isMatchForRule({ type, addr }, deny[i])
       if (isValid) {
-        throw blockError()
+        throw await denyHandler()
       }
     }
     for (let i = 0; i < allowLength; i++) {
@@ -137,6 +176,12 @@ export const ipLimit = (
         return await next()
       }
     }
-    throw blockError()
+
+    if (allowLength > 0) {
+      throw await denyHandler()
+    } else {
+      // If only deny or allow is empty, allow '*'
+      return await next()
+    }
   })
 }
