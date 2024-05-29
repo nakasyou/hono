@@ -108,7 +108,12 @@ export const ipLimit = (
   { deny = [], allow = [] }: IPLimitRules
 ): MiddlewareHandler => {
   const denyLength = deny.length
-  const allowLength = allow.length
+  let allowLength = allow.length
+
+  if (allowLength === 0) {
+    allow.push('*')
+    allowLength = 1
+  }
 
   const blockError = (): HTTPException =>
     new HTTPException(403, {
