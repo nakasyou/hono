@@ -22,7 +22,7 @@ import { distinctionRemoteAddr, expandIPv6, ipV4ToBinary, ipV6ToBinary } from '.
  * - `::1` static
  * - `::1/10` CIDR Notation
  */
-export type IPLimitRule = string
+export type RequestLimitRule = string
 
 const IS_CIDR_NOTATION_REGEX = /\/[0-9]{0,3}$/
 export const isMatchForRule = (
@@ -30,7 +30,7 @@ export const isMatchForRule = (
     addr: string
     type: AddressType
   },
-  rule: IPLimitRule
+  rule: RequestLimitRule
 ): boolean => {
   if (rule === '*') {
     // Match all
@@ -91,21 +91,21 @@ export const isMatchForRule = (
 }
 
 /**
- * Rules for IP Limit Middleware
+ * Rules for Request Limit Middleware
  */
-export interface IPLimitRules {
-  deny?: IPLimitRule[]
-  allow?: IPLimitRule[]
+export interface RequestLimitRules {
+  deny?: RequestLimitRule[]
+  allow?: RequestLimitRule[]
 }
 
 /**
- * Handlers for IP Limit Middleware
+ * Handlers for Request Limit Middleware
  * And Allow/Deny state strings
  */
 const ALLOW_STRING = 'allow'
 const DENY_STRING = 'deny'
 
-export interface IPLimitHandlers {
+export interface RequestLimitHandlers {
   denyHandler?: (() => HTTPException) | (() => Promise<HTTPException>)
   validHandler?: (context: {
     c: Context
@@ -120,11 +120,11 @@ export interface IPLimitHandlers {
 }
 
 /**
- * IP Limit Middleware
+ * Request Limit Middleware
  *
  * @param getConnInfo getConnInfo helper
  */
-export const ipLimit = (
+export const requestLimit = (
   getConnInfo: GetConnInfo,
   {
     deny = [],
@@ -136,7 +136,7 @@ export const ipLimit = (
         }),
       }),
     validHandler,
-  }: IPLimitRules & IPLimitHandlers
+  }: RequestLimitRules & RequestLimitHandlers
 ): MiddlewareHandler => {
   const denyLength = deny.length
   const allowLength = allow.length

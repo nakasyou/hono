@@ -1,9 +1,9 @@
 import { Hono } from '../..'
 import type { GetConnInfo } from '../../helper/conninfo'
 import { HTTPException } from '../../http-exception'
-import { ipLimit, isMatchForRule } from '.'
+import { isMatchForRule, requestLimit } from '.'
 
-describe('ipLimit middleware', () => {
+describe('requestLimit middleware', () => {
   it('Should limit', async () => {
     const getConnInfo: GetConnInfo = (c) => {
       return {
@@ -19,7 +19,7 @@ describe('ipLimit middleware', () => {
     }>()
     app.use(
       '/rules',
-      ipLimit(getConnInfo, {
+      requestLimit(getConnInfo, {
         allow: ['192.168.1.0', '192.168.2.0/24'],
         deny: ['192.168.2.10'],
       })
@@ -28,7 +28,7 @@ describe('ipLimit middleware', () => {
 
     app.use(
       '/only-deny',
-      ipLimit(getConnInfo, {
+      requestLimit(getConnInfo, {
         deny: ['192.168.2.10'],
       })
     )
@@ -36,7 +36,7 @@ describe('ipLimit middleware', () => {
 
     app.use(
       '/handlers',
-      ipLimit(getConnInfo, {
+      requestLimit(getConnInfo, {
         allow: ['192.168.1.0', '192.168.2.0/24'],
         deny: ['192.168.2.10'],
         denyHandler: () =>
