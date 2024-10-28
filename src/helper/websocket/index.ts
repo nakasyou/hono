@@ -20,17 +20,19 @@ export interface WSEvents<T = unknown> {
 /**
  * Upgrade WebSocket Type
  */
-export type UpgradeWebSocket<T = unknown, U = any> = (
-  createEvents: (c: Context) => WSEvents<T> | Promise<WSEvents<T>>,
-  options?: U
-) => MiddlewareHandler<
-  any,
-  string,
-  {
-    outputFormat: 'ws'
-  }
->
-
+export interface UpgradeWebSocket<T = unknown, U = any> {
+  (
+    createEvents: (c: Context) => WSEvents<T> | Promise<WSEvents<T>>,
+    options?: U
+  ): MiddlewareHandler<
+    any,
+    string,
+    {
+      outputFormat: 'ws'
+    }
+  >
+  (c: Context, events: WSEvents<T>, options?: U): Promise<Response>
+}
 /**
  * ReadyState for WebSocket
  */
@@ -106,14 +108,25 @@ export type WebSocketHelperDefineHandler<T, U> = (
 export const defineWebSocketHelper = <T = unknown, U = any>(
   handler: WebSocketHelperDefineHandler<T, U>
 ): UpgradeWebSocket<T, U> => {
-  return (createEvents, options) => {
-    return async function UpgradeWebSocket(c, next) {
-      const events = await createEvents(c)
-      const result = await handler(c, events, options)
-      if (result) {
-        return result
+  return (...args) => {
+    if (typeof args[0] === 'function') {
+      const [createEvents, options] = args
+      return async function UpgradeWebSocket(c, next) {
+        const events = await createEvents(c)
+        const result = await handler(c, events, options as U | undefined)
+        if (result) {
+          return result
+        }
+        await next()
       }
-      await next()
     }
+    const [c, events, options] = args as [Context, WSEvents<T>, U | undefined]
+    return (async () => {
+      const response = await handler(c, events, options as U | undefined)
+      if (!(response instanceof Response)) {
+        throw new Error('Upgrade failed.')
+      }
+      return response
+    })()
   }
 }
